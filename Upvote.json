@@ -1,6 +1,6 @@
 {
   "allowHttpBackend": false,
-  "backendCommand": "node backend -c \"q2njftvb7yinvfm1gkntmwrkaumfzu\" -s \"Fgq/Ftrwy19med/3WbX+Od0LwCUZsA+SUm9bhRWPAX4=\" -o \"21314155\"",
+  "backendCommand": "node backend -c \"q2njftvb7yinvfm1gkntmwrkaumfzu\" -s \"Fgq/Ftrwy19med/3WbX+Od0LwCUZsA+SUm9bhRWPAX4=\" -o \"21314155\" -n \"zpyer2c47nkdiizb5ufh6h86btm0gk\"",
   "backendFolderName": "upvote\\services",
   "certificateExceptions": [],
   "extensionViews": [

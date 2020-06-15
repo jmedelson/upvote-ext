@@ -68,11 +68,13 @@ ext.
   option('-s, --secret <secret>', 'Extension secret').
   option('-c, --client-id <client_id>', 'Extension client ID').
   option('-o, --owner-id <owner_id>', 'Extension owner ID').
+  option('-n, --client-secret <client_secret>', 'Extension client secret').
   parse(process.argv);
 
 const ownerId = getOption('ownerId', 'EXT_OWNER_ID');
 const secret = Buffer.from(getOption('secret', 'EXT_SECRET'), 'base64');
 const clientId = getOption('clientId', 'EXT_CLIENT_ID');
+const clientSecret = getOption('clientSecret', 'EXT_CLIENT_SECRET');
 
 const serverOptions = {
   host: 'localhost',
@@ -192,19 +194,35 @@ function updateNewest(id,newPost){
   console.log("NEWEST",typeof(channelNewest[id]))
   channelNewest[id].push(newPost)
 }
-function helixRequest(name){
+function requestOauth(){
+  const link ="https://id.twitch.tv/oauth2/token?client_id=" + clientId + "&client_secret=" + clientSecret + "&grant_type=client_credentials";
+  console.log("Oauth link",link)
+  return new Promise(resolve=>{
+    const options = {
+      url: link
+    }
+    request.post(options, (err, res, body) =>{
+      console.log("Oauth BODY-----",body)
+      resolve(JSON.parse(body).access_token)
+    });
+  });
+}
+async function helixRequest(name){
   console.log("helix", name)
+  var oauth = await requestOauth()
+  console.log('token', oauth)
   link = "https://api.twitch.tv/helix/users?id=" + name
   console.log("link",link)
   return new Promise(resolve=>{
     const options = {
       url: link,
       headers: {
-        'Client-ID' : clientId
+        'Client-ID' : clientId,
+        'Authorization': 'Bearer ' + oauth
       }
     };
     request.get(options, (err, res, body) =>{
-      // console.log("BODY-----",body)
+      console.log("BODY-----",body)
       // console.log("Response!!!!!", JSON.parse(body).data[0].display_name)
       message = JSON.parse(body).data[0].display_name
       resolve(message)
