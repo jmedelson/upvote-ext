@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Viewer Page</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+    <div id="app" class="full-height"></div>
+    <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+    <!-- If you use any external libraries, such as jQuery, you must include
+      them as part of your extension.  Twitch does not allow extensions to link
+      to external libraries. -->
+    <script src="jquery-3.3.1.min.js" type="text/javascript"></script>
+    <script src="viewer.js" type="text/javascript"></script>
+    <div class="content">
+        <div class='button-bar'>
+            <div class="button selected button-top">Top</div>
+            <div class="button button-new">New</div>
+            <div class='button reset'>Reset</div>
+        </div>
+        <div class="post">
+            <input type="text" id="post-input" placeholder="Type post here" maxlength="35">
+            <div id="post-send">Post</div>
+        </div>
+        <div id="wrapper">
+            <div class="messages-top">
+                <!-- <div class="message">Post #1 Example Key Lnelstotae et lab 
+                    <div class='user'>
+                        <div class="score">
+                            ▲30
+                        </div>
+                        User
+                    </div>
+                </div><div class="message">Post #2 Inimodiciis res abo
+                    <div class='user'>
+                        <div class="score">
+                            ▲24
+                        </div>
+                        User
+                    </div>
+                </div> -->
+            </div>
+            <div class="messages-new">
+                <!-- <div class="message">Post #3 Inimodiciis res abo 
+                    <div class='user'>
+                        <div class="score">
+                            ▲30
+                        </div>
+                        User
+                    </div>
+                </div><div class="message">Post #4 doluptassit que
+                    <div class='user'>
+                        <div class="score">
+                            ▲24
+                        </div>
+                        User
+                    </div>
+                </div> -->
+            </div>
+        </div>
+    </div>
+</body>
+</html>
