@@ -19,7 +19,7 @@ function createRequest(type, method) {
 
     return {
         type: type,
-        url: 'https://kdy2tx4lu6.execute-api.us-east-2.amazonaws.com/dev/upvote/' + method,
+        url: location.protocol + '//localhost:8081/upvote/' + method,
         success: updateBlock,
         error: logError,
         data:'',
@@ -29,7 +29,6 @@ function createRequest(type, method) {
 function setAuth(token) {
     Object.keys(requests).forEach((req) => {
         twitch.rig.log('Setting auth headers');
-        twitch.rig.log('Bearer' + token)
         requests[req].headers = { 'Authorization': 'Bearer ' + token }
     });
 }
