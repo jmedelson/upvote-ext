@@ -40,48 +40,26 @@ function setAuth(token) {
         requests[req].headers = { 'Authorization': 'Bearer ' + token }
     });
 }
-function populate(dataTop, dataNew){
-    $(".message").remove();
-    role = Twitch.ext.viewer.role
-    var hold = ''
-    if(role == "broadcaster"){
-        for(item in dataTop){
-            element = '<div class="message"><div class="remove" id="xt'+ dataTop[item].id+'">×</div>Post #'+ dataTop[item].id + '&nbsp;' + dataTop[item].post+ '<div class="user"><div class="score" id="t'+ dataTop[item].id +'">▲'+ dataTop[item].votes +
-            '</div>'+ dataTop[item].user +'</div></div>'
-            // twitch.rig.log(element)
-            hold += element
-        }
-        $(".messages-top").append(hold)
-        hold = ''
-        for(item in dataNew){
-            element = '<div class="message"><div class="remove" id="xn'+ dataNew[item].id+'">×</div>Post #'+ dataNew[item].id +'&nbsp;' + dataNew[item].post+ '<div class="user"><div class="score" id="n'+ dataNew[item].id +'">▲'+ dataNew[item].votes +
-            '</div>'+ dataNew[item].user +'</div></div>'
-            // twitch.rig.log(element)
-            hold += element
-        }
-        $(".messages-new").append(hold)
-    }
-    else{
-        for(item in dataTop){
-            element = '<div class="message">Post #'+ dataTop[item].id + '&nbsp;' + dataTop[item].post+ '<div class="user"><div class="score" id="t'+ dataTop[item].id +'">▲'+ dataTop[item].votes +
-            '</div>'+ dataTop[item].user +'</div></div>'
-            // twitch.rig.log(element)
-            hold += element
-        }
-        $(".messages-top").append(hold)
-        hold = ''
-        for(item in dataNew){
-            element = '<div class="message">Post #'+ dataNew[item].id +'&nbsp;' + dataNew[item].post+ '<div class="user"><div class="score" id="n'+ dataNew[item].id +'">▲'+ dataNew[item].votes +
-            '</div>'+ dataNew[item].user +'</div></div>'
-            // twitch.rig.log(element)
-            hold += element
-        }
-        $(".messages-new").append(hold)
-    }
 
-}
 function updateBlock(res) {
     twitch.rig.log('Success--update block');
+    try{
+        if(res.identifier == 'initial'){
+            var data = res
+            for(var post of data.topItem){
+                topPosts.push([post.post,post.poster,post.upvotes, post.uniqueID])
+            }
+            for(post of data.newItem){
+                newPosts.push([post.post,post.poster,post.upvotes,post.uniqueID])
+            }
+            updateDisplay()
+        }else{
+            twitch.rig.log('non-initial')
+        }
+
+    }catch(err){
+        twitch.rig.log(err)
+    }
     
 }
 
@@ -112,7 +90,7 @@ twitch.onAuthorized(function(auth) {
 function logError(_, error, status) {
   twitch.rig.log('EBS request returned '+status+' ('+error+')');
 }
-function newPost(post,poster,identifier = 'placeholder'){
+function newPost(post,poster,identifier = 'placeholder',update = true){
     twitch.rig.log("NEWPOST LENGTH",topPosts.length, newPosts.length)
     if(topPosts.length<15){
         topPosts.push([post,poster,0, identifier])
@@ -121,7 +99,9 @@ function newPost(post,poster,identifier = 'placeholder'){
     if(newPosts.length>15){
         newPosts.pop()
     }
-    updateDisplay()
+    if(update){
+        updateDisplay()
+    }
 }
 function updateDisplay(){
     var hold = ''

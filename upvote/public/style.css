@@ -70,8 +70,18 @@
 }
 .messages-top{
     display: block;
+    overflow-y: scroll;
+    max-height: 550px;
+}
+.messages-top::-webkit-scrollbar {
+    display: none;
 }
 .messages-new{
+    display: none;
+    overflow-y: scroll;
+    max-height: 550px;
+}
+.messages-new::-webkit-scrollbar {
     display: none;
 }
 .user{

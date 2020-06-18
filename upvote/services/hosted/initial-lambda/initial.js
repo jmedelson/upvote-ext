@@ -1,28 +1,40 @@
 const AWS = require('aws-sdk');
 const documentClient = new AWS.DynamoDB.DocumentClient({ region: 'us-east-2' });
 
+// const queryDB = async (channel) => {
+//   var params = {
+//     TableName: "upvote-data",
+//     Key: {
+//       "uid":channel,
+//       "time":1592348288771
+//       }
+//     }
+//   await documentClient.get(params, function(err, data){
+//     if(err){console.log(err)}else{console.log(data)}
+//   }).promise()
+// }
 
-
-const queryDB2 = async (channel) => {
-  var items = []
+const queryDBnew = async (channel) => {
+  var newitems = []
   var params = {
     TableName: 'upvote-data',
     KeyConditionExpression: 'uid = :channel',
     ExpressionAttributeValues: {
         ':channel': channel
     },
-    Limit: 10,
+    Limit: 15,
     ScanIndexForward: false
   }
   const chData = await documentClient.query(params).promise();
   for(var item of chData.Items){
+    newitems.push(item)
     console.log(item)
   }
-  return chData.length
+  return newitems
 }
 
-const queryDB = async (channel) => {
-  var items = []
+const queryDBtop = async (channel) => {
+  var topitems = []
   var params = {
     TableName: 'upvote-data',
     IndexName: "upvote-index",
@@ -30,19 +42,26 @@ const queryDB = async (channel) => {
     ExpressionAttributeValues: {
         ':channel': channel
     },
-    Limit: 10,
+    Limit: 15,
     ScanIndexForward: false
   }
   const chData = await documentClient.query(params).promise();
   for(var item of chData.Items){
+    topitems.push(item)
     console.log(item)
   }
-  return chData.length
+  return topitems
 }
 
 const initialHandler = async(channelId) =>{
-  await queryDB(channelId)
-  return;
+  var message = {
+    topItem:[],
+    newItem:[]
+  }
+  let[topResult, newResult] = await Promise.all([queryDBtop(channelId),queryDBnew(channelId)]);
+  message.topItem = topResult;
+  message.newItem = newResult;
+  return message
 }
 exports.handler = async (event) => {
     // TODO implement
@@ -55,7 +74,7 @@ exports.handler = async (event) => {
       return { statusCode, body: JSON.stringify(body, null, 2), headers };
     };
     var channel = event.pathParameters.proxy
-    await initialHandler(channel)
+    var res = await initialHandler(channel)
     console.log(event.pathParameters.proxy)
-    return response(200, 'INITIAL message--sucess');
+    return response(200, res);
 };
