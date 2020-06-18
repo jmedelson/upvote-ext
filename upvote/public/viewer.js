@@ -14,7 +14,7 @@ var twitch = window.Twitch.ext;
 // create the request options for our Twitch API calls
 var requests = {
     set: createRequest('POST', 'message'),
-    vote: createRequest('POST','upvote'),
+    vote: createRequest('POST','vote'),
     remove: createRequest('POST','remove'),
     reset: createRequest('POST','reset')
 };
@@ -47,10 +47,10 @@ function updateBlock(res) {
         if(res.identifier == 'initial'){
             var data = res
             for(var post of data.topItem){
-                topPosts.push([post.post,post.poster,post.upvotes, post.uniqueID])
+                topPosts.push([post.post,post.poster,post.upvotes, post.uid])
             }
             for(post of data.newItem){
-                newPosts.push([post.post,post.poster,post.upvotes,post.uniqueID])
+                newPosts.push([post.post,post.poster,post.upvotes,post.uid])
             }
             updateDisplay()
         }else{
@@ -89,6 +89,12 @@ twitch.onAuthorized(function(auth) {
 
 function logError(_, error, status) {
   twitch.rig.log('EBS request returned '+status+' ('+error+')');
+}
+function topSort(){
+    topPosts.sort(function(a,b){
+        return b[2]-a[2]
+    })
+    updateDisplay()
 }
 function newPost(post,poster,identifier = 'placeholder',update = true){
     twitch.rig.log("NEWPOST LENGTH",topPosts.length, newPosts.length)
@@ -183,12 +189,23 @@ $(function() {
     })
     $('#wrapper').on('click', '.score', function(){
         var target = $(this).attr('id')
-        target = target.substring(1)
+        target = target.substring(6)
         twitch.rig.log('UPVOTEDDDD',target)
         if(voted.indexOf(target) == -1){
             voted.push(target)
             requests.vote['data'] = {"voteId":target};
             $.ajax(requests.vote);
+            for(item of newPosts){
+                if(item[3]==target){
+                    item[2] = item[2] + 1
+                }
+            }
+            for(item of topPosts){
+                if(item[3]==target){
+                    item[2] = item[2] + 1
+                }
+            }
+            topSort()
         }
     })
     $('#wrapper').on('click', '.remove', function(){
@@ -208,30 +225,68 @@ $(function() {
     twitch.listen('broadcast', function (target, contentType, message) {
         twitch.rig.log('Received broadcast',message);
         try{
-            data = message.split('--')
-            // New post recieved oveer pubsub
-            if(data[0] == 'newPost'){
-                //post has not been handled
-                if(preLoadedPost != data[3]){
-                    newPost(data[2],data[1],data[4])
-                }else{
-                    //post is already displayed
+            data = JSON.parse(message).data
+            twitch.rig.log(data)
+            if(data.identifier == 'newPost'){
+                if(preLoadedPost != data.id){
+                    newPost(data.post,data.user,data.unique)
+                }
+                else{
                     for(item of newPosts){
-                        //replace array placeholder with correct identifier and then rerender
                         if(item[3] == 'placeholder'){
-                            item[3] = data[4]
+                            item[3] = data.unique;
                             break;
                         }
                     }
                     for(item of topPosts){
                         if(item[3] == 'placeholder'){
-                            item[3] = data[4]
+                            item[3] = data.unique;
                             break;
                         }
                     }
                     updateDisplay()
                 }
             }
+            else if(data.identifier == 'newVote'){
+                if(!voted.includes(data.unique)){
+                    voted.push(data.unique)
+                    for(item of newPosts){
+                        if(item[3]==data.unique){
+                            item[2] = data.votes
+                        }
+                    }
+                    for(item of topPosts){
+                        if(item[3]==data.unique){
+                            item[2] = data.votes
+                        }
+                    }
+                    topSort()
+                }
+            }
+            // data = message.split('--')
+            // // New post recieved oveer pubsub
+            // if(data[0] == 'newPost'){
+            //     //post has not been handled
+            //     if(preLoadedPost != data[3]){
+            //         newPost(data[2],data[1],data[4])
+            //     }else{
+            //         //post is already displayed
+            //         for(item of newPosts){
+            //             //replace array placeholder with correct identifier and then rerender
+            //             if(item[3] == 'placeholder'){
+            //                 item[3] = data[4]
+            //                 break;
+            //             }
+            //         }
+            //         for(item of topPosts){
+            //             if(item[3] == 'placeholder'){
+            //                 item[3] = data[4]
+            //                 break;
+            //             }
+            //         }
+            //         updateDisplay()
+            //     }
+            // }
         }catch(error){
             twitch.rig.log(error)
             console.log(error)

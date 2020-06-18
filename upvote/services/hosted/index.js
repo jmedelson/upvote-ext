@@ -16,6 +16,7 @@ const verifyAndDecode = (auth) => {
 };
 
 const requestOauth = async () =>{
+    console.log("OUATH START")
     const link = "https://id.twitch.tv/oauth2/token?client_id=" + process.env.clientId + "&client_secret=" + process.env.clientSecret + "&grant_type=client_credentials";
     try {
         const response = await axios.post(link);
@@ -29,8 +30,10 @@ const requestOauth = async () =>{
 };
 
 const helixRequest = async (names) =>{
-    const link = "https://api.twitch.tv/helix/users?" + names;
+    const link = "https://api.twitch.tv/helix/users?id=" + names;
+    // console.log("Helix Request", link)
     const oauth = await requestOauth();
+    // console.log("OAUTH END", oauth)
     try {
         const response = await axios.get(link,{
             headers:{
@@ -38,21 +41,25 @@ const helixRequest = async (names) =>{
                 'Client-ID' : process.env.clientId
             }
         });
-        // console.log(response.data, link);
-        return response.data.data;
+        console.log("SUCCESS HELIX", response.data, link);
+        return response.data.data[0].display_name;
     }catch (error) {
-        console.log(error.response.body);
+        console.log("ERROR HELIX",error.response.body);
         return error;
     }
 };
 
-const storeDB = async (channelId, data) => {
+const storeDB = async (channelId, poster, post,unique) => {
+    console.log("STORE DB START")
     const newEntry = {
-        TableName: 'chat-royale-data',
+        TableName: 'upvote-db',
         Item: {
             channel: channelId,
-            viewers: data,
-            isActive: true
+            uid: unique,
+            time: Date.now(),
+            poster: poster,
+            post: post,
+            upvotes: 0
         }
     };
     return await documentClient.put(newEntry).promise();
@@ -96,7 +103,40 @@ const sendBroadcast = async (channel, data) =>{
 }
 
 const postHandler = async(channelId, data) =>{
-
+    // console.log("HANDLER")
+    data = data.split('&')
+    var post = data[0].split('=')[1];
+    console.log(post)
+    post = post.replace(/\+/g,' ');
+    console.log(post);
+    var user = data[1].split('=')[1]
+    var name = data[3].split('=')[1]
+    console.log("NAME", name)
+    if(name=='false'){
+        console.log('false')
+        user = await helixRequest(user)
+    }else{
+        user = name
+    }
+    var id = data[2].split('=')[1]
+    // console.log("IDENTIFIER", id)
+    // console.log("HELIX END", user)
+    var unique = Date.now().toString().slice(-5) + user
+    // var message = 'newPost--' + user + '--' + post + '--' + id + '--' + unique;
+    var message = {
+        data:{
+          user:user,
+          post:post,
+          id: id,
+          unique: unique,
+          identifier: 'newPost'
+        }
+    }
+    let [dbResult, broadcastResult] = await Promise.all([storeDB(channelId,user,post,unique),sendBroadcast(channelId, JSON.stringify(message), unique)]);
+    console.log("LOGGGING+++++++++======", dbResult)
+    // console.log("STOREDB END")
+    // console.log("HANDLER END")
+    return true
 }
 
 exports.handler = async event => {
@@ -109,14 +149,20 @@ exports.handler = async event => {
   
       return { statusCode, body: JSON.stringify(body, null, 2), headers };
     };
+    console.log(event)
     const payload = verifyAndDecode(event.headers.Authorization);
     const channelId = payload.channel_id;
     // const viewers = await getViewerHandler(122313);
     var data = event['body'];
-    console.log(data)
+    console.log("DATA", data)
+    var res = await postHandler(channelId, data)
     // const message = "New Players--" + viewers.toString() 
     // await storeDB(channelId, viewers);
     // const res = await sendBroadcast(channelId, message)
     // console.log(payload);
-    return response(200, 'message');
+    if(res){
+        return response(200, 'message--sucess');
+    }else{
+        return response(200, 'message--failure');
+    }
 };

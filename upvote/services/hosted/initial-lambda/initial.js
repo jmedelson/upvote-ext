@@ -17,8 +17,9 @@ const documentClient = new AWS.DynamoDB.DocumentClient({ region: 'us-east-2' });
 const queryDBnew = async (channel) => {
   var newitems = []
   var params = {
-    TableName: 'upvote-data',
-    KeyConditionExpression: 'uid = :channel',
+    TableName: 'upvote-db',
+    IndexName: "channel-time-index",
+    KeyConditionExpression: 'channel = :channel',
     ExpressionAttributeValues: {
         ':channel': channel
     },
@@ -36,9 +37,9 @@ const queryDBnew = async (channel) => {
 const queryDBtop = async (channel) => {
   var topitems = []
   var params = {
-    TableName: 'upvote-data',
-    IndexName: "upvote-index",
-    KeyConditionExpression: 'uid = :channel',
+    TableName: 'upvote-db',
+    IndexName: "channel-upvotes-index",
+    KeyConditionExpression: 'channel = :channel',
     ExpressionAttributeValues: {
         ':channel': channel
     },
@@ -56,7 +57,8 @@ const queryDBtop = async (channel) => {
 const initialHandler = async(channelId) =>{
   var message = {
     topItem:[],
-    newItem:[]
+    newItem:[],
+    identifier:''
   }
   let[topResult, newResult] = await Promise.all([queryDBtop(channelId),queryDBnew(channelId)]);
   message.topItem = topResult;
@@ -71,10 +73,11 @@ exports.handler = async (event) => {
         ["Access-Control-Allow-Credentials"] : true
       };
   
-      return { statusCode, body: JSON.stringify(body, null, 2), headers };
+      return { statusCode, body:JSON.stringify(body, null, 2), headers };
     };
     var channel = event.pathParameters.proxy
     var res = await initialHandler(channel)
+    res.identifier = 'initial'
     console.log(event.pathParameters.proxy)
     return response(200, res);
 };
