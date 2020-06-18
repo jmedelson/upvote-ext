@@ -1,7 +1,12 @@
 var token = "";
 var tuid = "";
 var ebs = "";
+var channelId= "";
 var voted = [];
+var usernameLoaded = 'Jayemochi'
+var preLoadedPost = false
+var topPosts = [];
+var newPosts = [];
 
 // because who wants to type this every time?
 var twitch = window.Twitch.ext;
@@ -9,17 +14,18 @@ var twitch = window.Twitch.ext;
 // create the request options for our Twitch API calls
 var requests = {
     set: createRequest('POST', 'message'),
-    get: createRequest('GET', 'initial'),
     vote: createRequest('POST','upvote'),
     remove: createRequest('POST','remove'),
     reset: createRequest('POST','reset')
 };
 
-function createRequest(type, method) {
-
+function createRequest(type, method, extended = '') {
+    if(extended){
+        extended = '/' + extended
+    }
     return {
         type: type,
-        url: 'https://kdy2tx4lu6.execute-api.us-east-2.amazonaws.com/dev/upvote/' + method,
+        url: 'https://kdy2tx4lu6.execute-api.us-east-2.amazonaws.com/dev/upvote/' + method + extended,
         success: updateBlock,
         error: logError,
         data:'',
@@ -27,6 +33,7 @@ function createRequest(type, method) {
 }
 
 function setAuth(token) {
+    console.log("TESTING", channelId)
     Object.keys(requests).forEach((req) => {
         twitch.rig.log('Setting auth headers');
         twitch.rig.log('Bearer' + token)
@@ -75,16 +82,6 @@ function populate(dataTop, dataNew){
 }
 function updateBlock(res) {
     twitch.rig.log('Success--update block');
-    if(res != "N/A"){
-        data = res.split('--');
-        twitch.rig.log('data',typeof(data[0]))
-
-        // twitch.rig.log('data2',typeof(JSON.parse(data[0])))
-        var dTop = JSON.parse(data[0])
-        var dNew = JSON.parse(data[1])
-        twitch.rig.log('tops', dTop)
-        populate(dTop, dNew)
-    }
     
 }
 
@@ -96,6 +93,13 @@ twitch.onAuthorized(function(auth) {
     // save our credentials
     token = auth.token;
     tuid = auth.userId;
+    channelId = auth.channelId;
+    console.log(channelId)
+    twitch.rig.log("HELLO WORLD--",channelId)
+    if(channelId.length < 3){
+        channelId = '79579372'
+    }
+    requests['get'] = createRequest('GET', 'initial', channelId),
     role = Twitch.ext.viewer.role
     twitch.rig.log("ROLE",role)
     if(role=="broadcaster"){
@@ -108,7 +112,33 @@ twitch.onAuthorized(function(auth) {
 function logError(_, error, status) {
   twitch.rig.log('EBS request returned '+status+' ('+error+')');
 }
-
+function newPost(post,poster,identifier = 'placeholder'){
+    twitch.rig.log("NEWPOST LENGTH",topPosts.length, newPosts.length)
+    if(topPosts.length<15){
+        topPosts.push([post,poster,0, identifier])
+    }
+    newPosts.unshift([post,poster, 0, identifier]);
+    if(newPosts.length>15){
+        newPosts.pop()
+    }
+    updateDisplay()
+}
+function updateDisplay(){
+    var hold = ''
+    for(var post of topPosts){
+        element = '<div class="message"><div class="remove" id="xt'+ post[3] +'">×</div>Post #'+ '12' + '&nbsp;' + post[0]+ '<div class="user"><div class="score" id="tscore'+ post[3] +'">▲'+ post[2] +
+        '</div>'+ post[1] +'</div></div>'
+        hold += element
+        $(".messages-top").html(hold)
+    }
+    hold = ''
+    for(var post of newPosts){
+        element = '<div class="message"><div class="remove" id="xn'+ post[3] +'">×</div>Post #'+ '12' + '&nbsp;' + post[0]+ '<div class="user"><div class="score" id="nscore'+ post[3] +'">▲'+ post[2] +
+        '</div>'+ post[1] +'</div></div>'
+        hold += element
+        $(".messages-new").html(hold)
+    }
+}
 
 $(function() {
     // Local Jquery handlers
@@ -117,9 +147,15 @@ $(function() {
         const message = $("#post-input").val().trim()
         if(message.length > 2){
             $("#post-input").val('')
-            var name = Twitch.ext.viewer.id || 'User'
-            requests.set['data'] = {"post":message, "user":name};
+            var viewerID = Twitch.ext.viewer.id || 'User'
+            var id = Math.floor(Math.random()*10000)
+            requests.set['data'] = {"post":message, "user":viewerID, 'identifier':id, "name":usernameLoaded };
             $.ajax(requests.set);
+            if(usernameLoaded){
+                twitch.rig.log("POSTING")
+                newPost(message, usernameLoaded)
+                preLoadedPost = id
+            }
         }
         else{
             twitch.rig.log('message not long enough')
@@ -132,9 +168,15 @@ $(function() {
             const message = $("#post-input").val().trim()
             if(message.length > 2){
                 $("#post-input").val('')
-                var name = Twitch.ext.viewer.id || 'User'
-                requests.set['data'] = {"post":message, "user":name};
+                var viewerID = Twitch.ext.viewer.id || 'User'
+                var id = Math.floor(Math.random()*10000)
+                requests.set['data'] = {"post":message, "user":viewerID, 'identifier':id, "name":usernameLoaded};
                 $.ajax(requests.set);
+                if(usernameLoaded){
+                    twitch.rig.log("POSTING")
+                    newPost(message, usernameLoaded)
+                    preLoadedPost = id
+                }
             }
             else{
                 twitch.rig.log('message not long enough')
@@ -185,17 +227,34 @@ $(function() {
     // listen for incoming broadcast message from our EBS
     twitch.listen('broadcast', function (target, contentType, message) {
         twitch.rig.log('Received broadcast',message);
-        if(message=='reset'){
-            $('.message').remove()
-        }
-        else{
+        try{
             data = message.split('--')
-            if(data[0].length > 0){
-                dataTop = JSON.parse(data[0])
-                dataNew = JSON.parse(data[1])
-                twitch.rig.log("!!!!!", dataTop, dataNew)
-                populate(dataTop, dataNew)
+            // New post recieved oveer pubsub
+            if(data[0] == 'newPost'){
+                //post has not been handled
+                if(preLoadedPost != data[3]){
+                    newPost(data[2],data[1],data[4])
+                }else{
+                    //post is already displayed
+                    for(item of newPosts){
+                        //replace array placeholder with correct identifier and then rerender
+                        if(item[3] == 'placeholder'){
+                            item[3] = data[4]
+                            break;
+                        }
+                    }
+                    for(item of topPosts){
+                        if(item[3] == 'placeholder'){
+                            item[3] = data[4]
+                            break;
+                        }
+                    }
+                    updateDisplay()
+                }
             }
+        }catch(error){
+            twitch.rig.log(error)
+            console.log(error)
         }
     });
 });
