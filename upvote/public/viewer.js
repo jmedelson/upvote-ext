@@ -1,6 +1,7 @@
 var token = "";
 var tuid = "";
 var ebs = "";
+var role = "";
 var channelId= "";
 var voted = [];
 var usernameLoaded = 'Jayemochi'
@@ -15,7 +16,7 @@ var twitch = window.Twitch.ext;
 var requests = {
     set: createRequest('POST', 'message'),
     vote: createRequest('POST','vote'),
-    remove: createRequest('POST','remove'),
+    remove: createRequest('DELETE','remove'),
     reset: createRequest('POST','reset')
 };
 
@@ -90,6 +91,41 @@ twitch.onAuthorized(function(auth) {
 function logError(_, error, status) {
   twitch.rig.log('EBS request returned '+status+' ('+error+')');
 }
+function removeHandler(postId){
+    twitch.rig.log(postId)
+    for(var post in newPosts){
+        if(newPosts[post][3] == postId){
+            newPosts.splice(post,1)
+            break;
+        }
+    }
+    for(var post in topPosts){
+        if(topPosts[post][3] == postId){
+            topPosts.splice(post,1)
+            var pointer = newPosts.length-1
+            var pointer2 = topPosts.length-1
+            while(pointer >= 0){
+                var found = false
+                pointer2 = topPosts.length-1
+                while(pointer2 >= 0){
+                    if(topPosts[pointer2][3] == newPosts[pointer][3]){
+                        found = true
+                        pointer2= -1
+                    }
+                    pointer2 = pointer2-1
+                }
+                twitch.rig.log("CHECK -------", pointer, found)
+                if(!found){
+                    topPosts.push(newPosts[pointer])
+                    pointer= -1
+                }
+                pointer = pointer - 1
+            }
+            break;
+        }
+    }
+    updateDisplay()
+}
 function topSort(){
     topPosts.sort(function(a,b){
         return b[2]-a[2]
@@ -112,17 +148,20 @@ function newPost(post,poster,identifier = 'placeholder',update = true){
 function updateDisplay(){
     var hold = ''
     for(var post of topPosts){
-        element = '<div class="message"><div class="remove" id="xt'+ post[3] +'">×</div>Post #'+ '12' + '&nbsp;' + post[0]+ '<div class="user"><div class="score" id="tscore'+ post[3] +'">▲'+ post[2] +
+        element = '<div class="message"><div class="remove" id="xt'+ post[3] +'">×</div><div class="post-message">' + post[0]+ '</div><div class="user"><div class="score" id="tscore'+ post[3] +'">▲'+ post[2] +
         '</div>'+ post[1] +'</div></div>'
         hold += element
         $(".messages-top").html(hold)
     }
     hold = ''
     for(var post of newPosts){
-        element = '<div class="message"><div class="remove" id="xn'+ post[3] +'">×</div>Post #'+ '12' + '&nbsp;' + post[0]+ '<div class="user"><div class="score" id="nscore'+ post[3] +'">▲'+ post[2] +
+        element = '<div class="message"><div class="remove" id="xn'+ post[3] +'">×</div><div class="post-message">' + post[0]+ '</div><div class="user"><div class="score" id="nscore'+ post[3] +'">▲'+ post[2] +
         '</div>'+ post[1] +'</div></div>'
         hold += element
         $(".messages-new").html(hold)
+    }
+    if(role == 'broadcaster'){
+        $('.remove').css( "display", "inline-block" )
     }
 }
 
@@ -142,6 +181,18 @@ $(function() {
                 newPost(message, usernameLoaded)
                 preLoadedPost = id
             }
+            var element = document.getElementById("post-input");
+            var element2 = document.getElementById("post-send")
+            element.disabled = true
+            element2.style.color = '#2036ff'
+            element2.style.background = 'white'
+            element2.style.pointerEvents = 'none'
+            setTimeout(function(){  
+                element.disabled = false;
+                element2.style.color = 'white'
+                element2.style.background = 'none'
+                element2.style.pointerEvents = 'auto'
+            }, 60000);
         }
         else{
             twitch.rig.log('message not long enough')
@@ -167,6 +218,18 @@ $(function() {
             else{
                 twitch.rig.log('message not long enough')
             }
+            var element = document.getElementById("post-input");
+            var element2 = document.getElementById("post-send")
+            element.disabled = true
+            element2.style.color = '#2036ff'
+            element2.style.background = 'white'
+            element2.style.pointerEvents = 'none'
+            setTimeout(function(){  
+                element.disabled = false;
+                element2.style.color = 'white'
+                element2.style.background = 'none'
+                element2.style.pointerEvents = 'auto'
+            }, 60000);
         }
     })
     $('.button-top').click(function(){
@@ -193,16 +256,27 @@ $(function() {
         twitch.rig.log('UPVOTEDDDD',target)
         if(voted.indexOf(target) == -1){
             voted.push(target)
+            voted.push(target)
             requests.vote['data'] = {"voteId":target};
             $.ajax(requests.vote);
+            var hold
             for(item of newPosts){
                 if(item[3]==target){
                     item[2] = item[2] + 1
+                    hold = item
                 }
             }
+            var found = false
             for(item of topPosts){
                 if(item[3]==target){
                     item[2] = item[2] + 1
+                    found = true
+                }
+            }
+            if(!found){
+                if(topPosts[topPosts.length-1][2]<hold[2]){
+                    topPosts.pop()
+                    topPosts.push(hold)
                 }
             }
             topSort()
@@ -212,7 +286,7 @@ $(function() {
         var target = $(this).attr('id')
         target = target.substring(2)
         twitch.rig.log('removing',target)
-        requests.remove['data'] = {"voteId":target};
+        requests.remove['data'] = {"uid":target};
         $.ajax(requests.remove);
 
     })
@@ -246,47 +320,33 @@ $(function() {
                     }
                     updateDisplay()
                 }
-            }
-            else if(data.identifier == 'newVote'){
-                if(!voted.includes(data.unique)){
-                    voted.push(data.unique)
+            }else if(data.identifier == 'newVote'){
+                twitch.rig.log("Vote updating")
+                if(!voted.includes(data.uid)){
+                    voted.push(data.post)
                     for(item of newPosts){
-                        if(item[3]==data.unique){
+                        if(item[3]==data.uid){
                             item[2] = data.votes
                         }
                     }
+                    var found = false
                     for(item of topPosts){
-                        if(item[3]==data.unique){
+                        if(item[3]==data.uid){
                             item[2] = data.votes
+                            found = true
+                        }
+                    }
+                    if(!found){
+                        if(topPosts[topPosts.length-1][2]<data.votes){
+                            topPosts.pop()
+                            topPosts.push([data.post,data.poster, data.votes, data.uid])
                         }
                     }
                     topSort()
                 }
+            }else if(data.identifier == 'removePost'){
+                removeHandler(data.uid)
             }
-            // data = message.split('--')
-            // // New post recieved oveer pubsub
-            // if(data[0] == 'newPost'){
-            //     //post has not been handled
-            //     if(preLoadedPost != data[3]){
-            //         newPost(data[2],data[1],data[4])
-            //     }else{
-            //         //post is already displayed
-            //         for(item of newPosts){
-            //             //replace array placeholder with correct identifier and then rerender
-            //             if(item[3] == 'placeholder'){
-            //                 item[3] = data[4]
-            //                 break;
-            //             }
-            //         }
-            //         for(item of topPosts){
-            //             if(item[3] == 'placeholder'){
-            //                 item[3] = data[4]
-            //                 break;
-            //             }
-            //         }
-            //         updateDisplay()
-            //     }
-            // }
         }catch(error){
             twitch.rig.log(error)
             console.log(error)

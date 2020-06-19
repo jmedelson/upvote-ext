@@ -27,6 +27,29 @@
         "width": 1280,
         "height": 720
       }
+    },
+    {
+      "id": "3",
+      "label": "",
+      "channelId": "79579372",
+      "configurationAnchor": "component",
+      "displayChannelName": "tempo",
+      "type": "component",
+      "features": {
+        "isBitsEnabled": false,
+        "isChatEnabled": false,
+        "isSubscriptionStatusAvailable": false
+      },
+      "linked": false,
+      "linkedUserId": "",
+      "mode": "viewer",
+      "isPopout": false,
+      "role": "Broadcaster",
+      "orientation": "Portrait",
+      "frameSize": {
+        "width": 1280,
+        "height": 720
+      }
     }
   ],
   "manifest": {
