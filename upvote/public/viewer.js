@@ -4,7 +4,7 @@ var ebs = "";
 var role = "";
 var channelId= "";
 var voted = [];
-var usernameLoaded = 'Jayemochi'
+var usernameLoaded = false
 var preLoadedPost = false
 var topPosts = [];
 var newPosts = [];
@@ -17,7 +17,7 @@ var requests = {
     set: createRequest('POST', 'message'),
     vote: createRequest('POST','vote'),
     remove: createRequest('DELETE','remove'),
-    reset: createRequest('POST','reset')
+    reset: createRequest('DELETE','reset')
 };
 
 function createRequest(type, method, extended = '') {
@@ -44,6 +44,7 @@ function setAuth(token) {
 
 function updateBlock(res) {
     twitch.rig.log('Success--update block');
+    twitch.rig.log(res)
     try{
         if(res.identifier == 'initial'){
             var data = res
@@ -90,6 +91,7 @@ twitch.onAuthorized(function(auth) {
 
 function logError(_, error, status) {
   twitch.rig.log('EBS request returned '+status+' ('+error+')');
+  console.log(error,'---',status)
 }
 function removeHandler(postId){
     twitch.rig.log(postId)
@@ -214,22 +216,22 @@ $(function() {
                     newPost(message, usernameLoaded)
                     preLoadedPost = id
                 }
+                var element = document.getElementById("post-input");
+                var element2 = document.getElementById("post-send")
+                element.disabled = true
+                element2.style.color = '#2036ff'
+                element2.style.background = 'white'
+                element2.style.pointerEvents = 'none'
+                setTimeout(function(){  
+                    element.disabled = false;
+                    element2.style.color = 'white'
+                    element2.style.background = 'none'
+                    element2.style.pointerEvents = 'auto'
+                }, 60000);
             }
             else{
                 twitch.rig.log('message not long enough')
             }
-            var element = document.getElementById("post-input");
-            var element2 = document.getElementById("post-send")
-            element.disabled = true
-            element2.style.color = '#2036ff'
-            element2.style.background = 'white'
-            element2.style.pointerEvents = 'none'
-            setTimeout(function(){  
-                element.disabled = false;
-                element2.style.color = 'white'
-                element2.style.background = 'none'
-                element2.style.pointerEvents = 'auto'
-            }, 60000);
         }
     })
     $('.button-top').click(function(){
@@ -291,7 +293,8 @@ $(function() {
 
     })
     $('.reset').click(function(){
-        $('.message').hide()
+        // $('.message').hide()
+        requests.reset['data'] = {"started":'false'};
         $.ajax(requests.reset);
     })
     // EBS message handler
@@ -346,6 +349,32 @@ $(function() {
                 }
             }else if(data.identifier == 'removePost'){
                 removeHandler(data.uid)
+            }else if(data.identifier == 'resetStart'){
+                twitch.rig.log("RESET STARTING")
+                $(".messages-new").html('')
+                $(".messages-top").html('')
+                topPosts = []
+                newPosts = []
+                var element = document.getElementById("post-input");
+                var element2 = document.getElementById("post-send")
+                element.disabled = true
+                element2.style.color = '#2036ff'
+                element2.style.background = 'white'
+                element2.style.pointerEvents = 'none'
+            }else if(data.identifier == 'resetNotDone'){
+                twitch.rig.log("RESET NOT DONE, RESENDING REQUEST")
+                if(role=="broadcaster"){
+                    requests.reset['data'] = {"started":'true'};
+                    $.ajax(requests.reset);
+                }
+            }else if(data.identifier == 'resetComplete'){
+                twitch.rig.log("RESET COMPLETE")
+                var element = document.getElementById("post-input");
+                var element2 = document.getElementById("post-send")
+                element.disabled = false;
+                element2.style.color = 'white'
+                element2.style.background = 'none'
+                element2.style.pointerEvents = 'auto'
             }
         }catch(error){
             twitch.rig.log(error)
