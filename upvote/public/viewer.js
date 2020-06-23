@@ -55,6 +55,8 @@ function updateBlock(res) {
                 newPosts.push([post.post,post.poster,post.upvotes,post.uid])
             }
             updateDisplay()
+        }else if(res.identifier == 'username'){
+            usernameLoaded = res.payload
         }else{
             twitch.rig.log('non-initial')
         }
@@ -74,13 +76,25 @@ twitch.onAuthorized(function(auth) {
     token = auth.token;
     tuid = auth.userId;
     channelId = auth.channelId;
+    role = Twitch.ext.viewer.role
     console.log(channelId)
     twitch.rig.log("HELLO WORLD--",channelId)
-    if(channelId.length < 3){
-        channelId = '79579372'
+    if(tuid.startsWith('U')){
+        if(!Twitch.ext.viewer.isLinked){
+            console.log("Requesting id share")
+            Twitch.ext.actions.requestIdShare()
+        }else{
+            console.log("ID already shared")
+            $("#post-input").prop("disabled", false );
+            var element2 = document.getElementById("post-send")
+            element2.style.color = 'white'
+            element2.style.background = 'none'
+            element2.style.pointerEvents = 'auto'
+        }
+    }else{
+        console.log("ID share not requested") 
     }
     requests['get'] = createRequest('GET', 'initial', channelId),
-    role = Twitch.ext.viewer.role
     twitch.rig.log("ROLE",role)
     if(role=="broadcaster"){
         $(".reset").show()
@@ -150,14 +164,14 @@ function newPost(post,poster,identifier = 'placeholder',update = true){
 function updateDisplay(){
     var hold = ''
     for(var post of topPosts){
-        element = '<div class="message"><div class="remove" id="xt'+ post[3] +'">×</div><div class="post-message">' + post[0]+ '</div><div class="user"><div class="score" id="tscore'+ post[3] +'">▲'+ post[2] +
+        element = '<div class="message"><div class="remove" id="xt'+ post[3] +'">×</div><div class="post-message">' + decodeURIComponent(post[0])+ '</div><div class="user"><div class="score" id="tscore'+ post[3] +'">▲'+ post[2] +
         '</div>'+ post[1] +'</div></div>'
         hold += element
         $(".messages-top").html(hold)
     }
     hold = ''
     for(var post of newPosts){
-        element = '<div class="message"><div class="remove" id="xn'+ post[3] +'">×</div><div class="post-message">' + post[0]+ '</div><div class="user"><div class="score" id="nscore'+ post[3] +'">▲'+ post[2] +
+        element = '<div class="message"><div class="remove" id="xn'+ post[3] +'">×</div><div class="post-message">' + decodeURIComponent(post[0])+ '</div><div class="user"><div class="score" id="nscore'+ post[3] +'">▲'+ post[2] +
         '</div>'+ post[1] +'</div></div>'
         hold += element
         $(".messages-new").html(hold)
